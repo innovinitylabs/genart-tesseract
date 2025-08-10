@@ -34,9 +34,14 @@
           <label>bloom <input id="bloomStrength" type="range" min="0" max="2" step="0.01" value="0.9"/></label>
           <label>speed <input id="speed" type="range" min="0" max="2" step="0.01" value="1"/></label>
           <label>trail <input id="trail" type="checkbox"/></label>
+          <label>trail intensity <input id="trailIntensity" type="range" min="0.80" max="0.995" step="0.001" value="0.94"/></label>
+          <label>auto new seed <input id="autoRefresh" type="checkbox"/></label>
+          <label>interval <input id="interval" type="range" min="10" max="60" step="1" value="30"/></label>
+          <button id="refreshNow">new seed</button>
         </div>
       </div>
       <canvas id="scene"></canvas>
+      <canvas id="fade" class="fade-layer"></canvas>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

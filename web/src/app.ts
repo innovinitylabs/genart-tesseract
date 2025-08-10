@@ -69,10 +69,18 @@ export async function bootstrapApp(): Promise<void> {
   let shapeMode: ShapeMode = (shapeSelect?.value as ShapeMode) ?? 'auto'
 
   const canvas = document.getElementById('scene') as HTMLCanvasElement
+  const fadeCanvas = document.getElementById('fade') as HTMLCanvasElement
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setClearColor('#0b0e14', 1)
+  // Fade context for trails
+  const fadeCtx = fadeCanvas.getContext('2d')!
+  const resizeFade = () => {
+    fadeCanvas.width = window.innerWidth
+    fadeCanvas.height = window.innerHeight
+  }
+  resizeFade()
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 100)
@@ -91,7 +99,7 @@ export async function bootstrapApp(): Promise<void> {
   const composer = new EffectComposer(renderer)
   const renderPass = new RenderPass(scene, camera)
   composer.addPass(renderPass)
-  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.85, 0.6, 0.9)
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.1, 0.6, 0.9)
   composer.addPass(bloom)
 
   // Geometry buffers
@@ -115,7 +123,7 @@ export async function bootstrapApp(): Promise<void> {
   const starColors = new Float32Array(MAX_STARS * 3)
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3))
   starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3))
-  const starMat = new THREE.PointsMaterial({ size: 0.01, transparent: true, opacity: 0.9, vertexColors: true, blending: THREE.AdditiveBlending })
+  const starMat = new THREE.PointsMaterial({ size: 0.012, transparent: true, opacity: 0.9, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false })
   const stars = new THREE.Points(starGeo, starMat)
   scene.add(stars)
 
@@ -125,6 +133,7 @@ export async function bootstrapApp(): Promise<void> {
   let baseHue = 210
   let speedMul = 1
   let trail = false
+  let trailAlpha = 0.94
 
   async function refreshBeacon(): Promise<void> {
     try {
@@ -204,7 +213,17 @@ export async function bootstrapApp(): Promise<void> {
   }
 
   await refreshBeacon()
-  const refreshInterval = window.setInterval(refreshBeacon, 30_000)
+  let refreshInterval = 30_000
+  let refreshTimer: number | null = null
+  const setAutoRefresh = () => {
+    if (refreshTimer) window.clearInterval(refreshTimer)
+    const auto = (document.getElementById('autoRefresh') as HTMLInputElement).checked
+    const iv = parseInt((document.getElementById('interval') as HTMLInputElement).value, 10) * 1000
+    refreshInterval = iv
+    if (auto) refreshTimer = window.setInterval(refreshBeacon, refreshInterval) as unknown as number
+    else refreshTimer = null
+  }
+  setAutoRefresh()
 
   // Animation
   const clock = new THREE.Clock()
@@ -248,7 +267,13 @@ export async function bootstrapApp(): Promise<void> {
     lineGeometry.attributes.position.needsUpdate = true
     lineGeometry.attributes.color.needsUpdate = true
 
-    if (!trail) renderer.clear()
+    if (trail) {
+      fadeCtx.fillStyle = `rgba(11,14,20,${1 - trailAlpha})`
+      fadeCtx.fillRect(0, 0, fadeCanvas.width, fadeCanvas.height)
+    } else {
+      renderer.clear()
+      fadeCtx.clearRect(0, 0, fadeCanvas.width, fadeCanvas.height)
+    }
     composer.render()
     requestAnimationFrame(animate)
   }
@@ -261,6 +286,7 @@ export async function bootstrapApp(): Promise<void> {
     camera.aspect = w / h
     camera.updateProjectionMatrix()
     composer.setSize(w, h)
+    resizeFade()
   }
   window.addEventListener('resize', onResize)
 
@@ -294,6 +320,17 @@ export async function bootstrapApp(): Promise<void> {
     const v = parseFloat(speedCtrl.value); if (!Number.isNaN(v)) speedMul = v
   })
   trailCtrl.addEventListener('change', () => { trail = trailCtrl.checked })
+  const trailIntensity = document.getElementById('trailIntensity') as HTMLInputElement
+  trailIntensity.addEventListener('input', () => {
+    const v = parseFloat(trailIntensity.value)
+    if (!Number.isNaN(v)) trailAlpha = v
+  })
+  const autoRefresh = document.getElementById('autoRefresh') as HTMLInputElement
+  const interval = document.getElementById('interval') as HTMLInputElement
+  autoRefresh.addEventListener('change', setAutoRefresh)
+  interval.addEventListener('input', setAutoRefresh)
+  const refreshNow = document.getElementById('refreshNow') as HTMLButtonElement
+  refreshNow.addEventListener('click', refreshBeacon)
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {

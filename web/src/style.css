@@ -35,6 +35,14 @@ body {
   z-index: 0;
 }
 
+/* full-screen fade plane for trails */
+.fade-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
 #ui {
   position: absolute;
   top: 16px;
@@ -50,6 +58,14 @@ body {
   backdrop-filter: blur(6px) saturate(120%);
   z-index: 10;
   pointer-events: auto;
+}
+
+#ui select, #ui input, #ui button {
+  background: rgba(255,255,255,0.06);
+  color: var(--text);
+  border: 1px solid rgba(122,162,247,0.2);
+  border-radius: 6px;
+  padding: 4px 6px;
 }
 
 .row {
