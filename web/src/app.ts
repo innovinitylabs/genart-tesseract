@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js'
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
+import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js'
 import { createDrandClient, getLatestVerifiedBeacon, getBeaconForRound, stopDrandClient } from './drand'
 import { createTesseract, createSimplex4D, createCrossPolytope4D, create24Cell, rotateVertices4D, project4Dto3D, type RotationAngles4D } from './geometry4d'
 
@@ -69,18 +70,10 @@ export async function bootstrapApp(): Promise<void> {
   let shapeMode: ShapeMode = (shapeSelect?.value as ShapeMode) ?? 'auto'
 
   const canvas = document.getElementById('scene') as HTMLCanvasElement
-  const fadeCanvas = document.getElementById('fade') as HTMLCanvasElement
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setClearColor('#0b0e14', 1)
-  // Fade context for trails
-  const fadeCtx = fadeCanvas.getContext('2d')!
-  const resizeFade = () => {
-    fadeCanvas.width = window.innerWidth
-    fadeCanvas.height = window.innerHeight
-  }
-  resizeFade()
 
   const scene = new THREE.Scene()
   const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 100)
@@ -100,6 +93,9 @@ export async function bootstrapApp(): Promise<void> {
   const renderPass = new RenderPass(scene, camera)
   composer.addPass(renderPass)
   const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.1, 0.6, 0.9)
+  const afterimage = new AfterimagePass(0.94)
+  afterimage.enabled = false
+  composer.addPass(afterimage)
   composer.addPass(bloom)
 
   // Geometry buffers
@@ -133,7 +129,6 @@ export async function bootstrapApp(): Promise<void> {
   let baseHue = 210
   let speedMul = 1
   let trail = false
-  let trailAlpha = 0.94
 
   async function refreshBeacon(): Promise<void> {
     try {
@@ -267,13 +262,8 @@ export async function bootstrapApp(): Promise<void> {
     lineGeometry.attributes.position.needsUpdate = true
     lineGeometry.attributes.color.needsUpdate = true
 
-    if (trail) {
-      fadeCtx.fillStyle = `rgba(11,14,20,${1 - trailAlpha})`
-      fadeCtx.fillRect(0, 0, fadeCanvas.width, fadeCanvas.height)
-    } else {
-      renderer.clear()
-      fadeCtx.clearRect(0, 0, fadeCanvas.width, fadeCanvas.height)
-    }
+    // AfterimagePass handles trails internally
+    renderer.clear()
     composer.render()
     requestAnimationFrame(animate)
   }
@@ -286,7 +276,6 @@ export async function bootstrapApp(): Promise<void> {
     camera.aspect = w / h
     camera.updateProjectionMatrix()
     composer.setSize(w, h)
-    resizeFade()
   }
   window.addEventListener('resize', onResize)
 
@@ -310,20 +299,17 @@ export async function bootstrapApp(): Promise<void> {
     material.needsUpdate = true
   })
   bloomStrength.addEventListener('input', () => {
-    // will be read during refresh; also set live here
     const v = parseFloat(bloomStrength.value)
-    if (!Number.isNaN(v)) {
-      ;(composer.passes.find(p => (p as any).strength !== undefined) as any)?.strength && ((bloom as any).strength = v)
-    }
+    if (!Number.isNaN(v)) (bloom as any).strength = v
   })
   speedCtrl.addEventListener('input', () => {
     const v = parseFloat(speedCtrl.value); if (!Number.isNaN(v)) speedMul = v
   })
-  trailCtrl.addEventListener('change', () => { trail = trailCtrl.checked })
+  trailCtrl.addEventListener('change', () => { trail = trailCtrl.checked; afterimage.enabled = trail })
   const trailIntensity = document.getElementById('trailIntensity') as HTMLInputElement
   trailIntensity.addEventListener('input', () => {
     const v = parseFloat(trailIntensity.value)
-    if (!Number.isNaN(v)) trailAlpha = v
+    if (!Number.isNaN(v)) (afterimage as any).uniforms['damp'].value = v
   })
   const autoRefresh = document.getElementById('autoRefresh') as HTMLInputElement
   const interval = document.getElementById('interval') as HTMLInputElement
