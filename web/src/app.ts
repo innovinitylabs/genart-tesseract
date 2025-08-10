@@ -63,6 +63,7 @@ export async function bootstrapApp(): Promise<void> {
 
   // Controls
   const shapeSelect = document.getElementById('shapeSelect') as HTMLSelectElement
+  const paletteSelect = document.getElementById('paletteSelect') as HTMLSelectElement
   const lineOpacity = document.getElementById('lineOpacity') as HTMLInputElement
   const bloomStrength = document.getElementById('bloomStrength') as HTMLInputElement
   const speedCtrl = document.getElementById('speed') as HTMLInputElement
@@ -127,6 +128,7 @@ export async function bootstrapApp(): Promise<void> {
   const client = createDrandClient()
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
+  let palette: 'ocean' | 'pastel' | 'dusk' | 'mono' | 'vivid' = (paletteSelect?.value as any) ?? 'ocean'
   let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '3.0')
   let trail = (document.getElementById('trail') as HTMLInputElement)?.checked ?? true
 
@@ -254,8 +256,10 @@ export async function bootstrapApp(): Promise<void> {
       positions[ptr++] = vb.y
       positions[ptr++] = vb.z
 
-      const colA = new THREE.Color().setHSL(((baseHue / 360) + va.t * 0.35) % 1, 0.85, 0.55)
-      const colB = new THREE.Color().setHSL(((baseHue / 360) + vb.t * 0.35) % 1, 0.85, 0.55)
+      const { h: hA, s: sA, l: lA } = paletteHSL(baseHue, va.t, palette)
+      const { h: hB, s: sB, l: lB } = paletteHSL(baseHue, vb.t, palette)
+      const colA = new THREE.Color().setHSL(hA, sA, lA)
+      const colB = new THREE.Color().setHSL(hB, sB, lB)
       colors[cptr++] = colA.r; colors[cptr++] = colA.g; colors[cptr++] = colA.b
       colors[cptr++] = colB.r; colors[cptr++] = colB.g; colors[cptr++] = colB.b
     }
@@ -294,6 +298,9 @@ export async function bootstrapApp(): Promise<void> {
     shapeMode = shapeSelect.value as ShapeMode
     refreshBeacon()
   })
+  paletteSelect.addEventListener('change', () => {
+    palette = paletteSelect.value as any
+  })
   lineOpacity.addEventListener('input', () => {
     material.opacity = parseFloat(lineOpacity.value)
     material.needsUpdate = true
@@ -327,28 +334,59 @@ export async function bootstrapApp(): Promise<void> {
   const flickBtn = document.getElementById('flickBtn') as HTMLButtonElement
   flickBtn.addEventListener('click', () => {
     const rnd = () => (Math.random() - 0.5) * 2
-    // add a burst to base angles
-    angles = {
-      xy: angles.xy + rnd() * 0.8,
-      xz: angles.xz + rnd() * 0.8,
-      xw: angles.xw + rnd() * 0.8,
-      yz: angles.yz + rnd() * 0.8,
-      yw: angles.yw + rnd() * 0.8,
-      zw: angles.zw + rnd() * 0.8,
-    }
-    // quick camera spin
+    // choose 1-3 random rotation planes to accentuate
+    const planes: (keyof RotationAngles4D)[] = ['xy', 'xz', 'xw', 'yz', 'yw', 'zw']
+    const picks = planes.sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 3))
+    const burst = 0.8 + Math.random() * 0.8
+    for (const p of picks) angles[p] = angles[p] + rnd() * burst
+
+    // camera flick in random yaw/pitch
     const start = performance.now()
     const duration = 600
-    const base = camera.position.clone()
+    const yaw = (Math.random() - 0.5) * Math.PI
+    const pitch = (Math.random() - 0.5) * (Math.PI / 4)
+    const startPos = camera.position.clone()
+    const radius = startPos.length()
     function spin(now: number) {
       const t = Math.min(1, (now - start) / duration)
-      camera.position.x = base.x * Math.cos(t * Math.PI) - base.z * Math.sin(t * Math.PI)
-      camera.position.z = base.x * Math.sin(t * Math.PI) + base.z * Math.cos(t * Math.PI)
+      const a = t * yaw
+      const b = t * pitch
+      const x = radius * Math.cos(a)
+      const z = radius * Math.sin(a)
+      const y = radius * Math.sin(b)
+      camera.position.set(x, y, z)
       camera.lookAt(0, 0, 0)
       if (t < 1) requestAnimationFrame(spin)
     }
     requestAnimationFrame(spin)
   })
+
+// Palette mapping
+function paletteHSL(baseHue: number, t: number, palette: 'ocean' | 'pastel' | 'dusk' | 'mono' | 'vivid'): { h: number; s: number; l: number } {
+  const base = (baseHue / 360)
+  switch (palette) {
+    case 'ocean': {
+      const h = (base + 0.58 + t * 0.08) % 1
+      return { h, s: 0.45 + t * 0.15, l: 0.45 + t * 0.1 }
+    }
+    case 'pastel': {
+      const h = (base + 0.1 + t * 0.2) % 1
+      return { h, s: 0.35, l: 0.65 }
+    }
+    case 'dusk': {
+      const h = (base + 0.8 + t * 0.12) % 1
+      return { h, s: 0.5, l: 0.4 + t * 0.1 }
+    }
+    case 'mono': {
+      return { h: base, s: 0.05, l: 0.6 }
+    }
+    case 'vivid':
+    default: {
+      const h = (base + t * 0.35) % 1
+      return { h, s: 0.85, l: 0.55 }
+    }
+  }
+}
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
