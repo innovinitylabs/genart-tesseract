@@ -127,7 +127,7 @@ export async function bootstrapApp(): Promise<void> {
   const client = createDrandClient()
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
-  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '1.5')
+  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '2.5')
   let trail = (document.getElementById('trail') as HTMLInputElement)?.checked ?? true
 
   async function refreshBeacon(): Promise<void> {
@@ -298,12 +298,17 @@ export async function bootstrapApp(): Promise<void> {
     material.opacity = parseFloat(lineOpacity.value)
     material.needsUpdate = true
   })
+  const bloomVal = document.getElementById('bloomVal') as HTMLElement
+  const speedVal = document.getElementById('speedVal') as HTMLElement
+  const intervalVal = document.getElementById('intervalVal') as HTMLElement
   bloomStrength.addEventListener('input', () => {
     const v = parseFloat(bloomStrength.value)
     if (!Number.isNaN(v)) (bloom as any).strength = v
+    if (bloomVal) bloomVal.textContent = v.toFixed(2)
   })
   speedCtrl.addEventListener('input', () => {
     const v = parseFloat(speedCtrl.value); if (!Number.isNaN(v)) speedMul = v
+    if (speedVal) speedVal.textContent = v.toFixed(2)
   })
   trailCtrl.addEventListener('change', () => { trail = trailCtrl.checked; afterimage.enabled = trail })
   const trailIntensity = document.getElementById('trailIntensity') as HTMLInputElement
@@ -314,7 +319,7 @@ export async function bootstrapApp(): Promise<void> {
   const autoRefresh = document.getElementById('autoRefresh') as HTMLInputElement
   const interval = document.getElementById('interval') as HTMLInputElement
   autoRefresh.addEventListener('change', () => { setAutoRefresh(); if (autoRefresh.checked) refreshBeacon() })
-  interval.addEventListener('input', () => { setAutoRefresh() })
+  interval.addEventListener('input', () => { setAutoRefresh(); if (intervalVal) intervalVal.textContent = `${interval.value}s` })
   const refreshNow = document.getElementById('refreshNow') as HTMLButtonElement
   refreshNow.addEventListener('click', refreshBeacon)
 
