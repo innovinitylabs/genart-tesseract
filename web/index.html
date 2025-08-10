@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tesseract — 4D Generative Art (Verifiable Randomness)</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="ui">
+        <div class="row">
+          <div class="brand">Tesseract</div>
+          <div id="status">Fetching randomness…</div>
+        </div>
+        <div class="row mono small">
+          <span id="round">round: —</span>
+          <span id="verified">verified: —</span>
+          <span id="shape">shape: —</span>
+        </div>
+        <div class="row mono small" id="randhex">randomness: —</div>
+      </div>
+      <canvas id="scene"></canvas>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+  </html>
