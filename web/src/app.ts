@@ -129,7 +129,7 @@ export async function bootstrapApp(): Promise<void> {
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
   let palette: 'ocean' | 'pastel' | 'dusk' | 'mono' | 'vivid' = (paletteSelect?.value as any) ?? 'ocean'
-  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '3.0')
+  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '10.0')
   let trail = (document.getElementById('trail') as HTMLInputElement)?.checked ?? true
 
   async function refreshBeacon(): Promise<void> {
@@ -310,6 +310,8 @@ export async function bootstrapApp(): Promise<void> {
   const speedVal = document.getElementById('speedVal') as HTMLElement
   const intervalVal = document.getElementById('intervalVal') as HTMLElement
   const palettePreview = document.getElementById('palettePreview') as HTMLElement
+  const trailDecay = document.getElementById('trailDecay') as HTMLInputElement
+  const trailDecayVal = document.getElementById('trailDecayVal') as HTMLElement
   bloomStrength.addEventListener('input', () => {
     const v = parseFloat(bloomStrength.value)
     if (!Number.isNaN(v)) (bloom as any).strength = v
@@ -320,11 +322,16 @@ export async function bootstrapApp(): Promise<void> {
     if (speedVal) speedVal.textContent = v.toFixed(2)
   })
   trailCtrl.addEventListener('change', () => { trail = trailCtrl.checked; afterimage.enabled = trail })
-  const trailIntensity = document.getElementById('trailIntensity') as HTMLInputElement
-  trailIntensity.addEventListener('input', () => {
-    const v = parseFloat(trailIntensity.value)
-    if (!Number.isNaN(v)) (afterimage as any).uniforms['damp'].value = v
-  })
+  // map desired decay time to AfterimagePass damp (0..1) using exponential relation
+  const updateTrailDamp = () => {
+    const seconds = parseFloat(trailDecay.value)
+    const fps = 60
+    const perFrameDamp = Math.exp(-1 / (seconds * fps))
+    ;(afterimage as any).uniforms['damp'].value = perFrameDamp
+    if (trailDecayVal) trailDecayVal.textContent = `${seconds.toFixed(1)}s`
+  }
+  trailDecay.addEventListener('input', updateTrailDamp)
+  updateTrailDamp()
   const autoRefresh = document.getElementById('autoRefresh') as HTMLInputElement
   const interval = document.getElementById('interval') as HTMLInputElement
   autoRefresh.addEventListener('change', () => { setAutoRefresh(); if (autoRefresh.checked) refreshBeacon() })
