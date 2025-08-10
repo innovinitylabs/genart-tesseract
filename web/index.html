@@ -31,13 +31,14 @@
             </select>
           </label>
           <label>lines <input id="lineOpacity" type="range" min="0" max="1" step="0.01" value="0.65"/></label>
-          <label>bloom <input id="bloomStrength" type="range" min="0" max="5" step="0.01" value="2.5"/> <span class="mono small" id="bloomVal">2.50</span></label>
-          <label>rotation speed <input id="speed" type="range" min="0" max="5" step="0.01" value="2.5"/> <span class="mono small" id="speedVal">2.50</span></label>
+          <label title="Glow intensity">bloom <input id="bloomStrength" type="range" min="0" max="20" step="0.01" value="4.0"/> <span class="mono small" id="bloomVal">4.00</span></label>
+          <label title="4D rotation rate (higher = faster)">rotation speed <input id="speed" type="range" min="0" max="20" step="0.01" value="3.0"/> <span class="mono small" id="speedVal">3.00</span></label>
           <label>trail <input id="trail" type="checkbox" checked/></label>
           <label>trail intensity <input id="trailIntensity" type="range" min="0.80" max="0.995" step="0.001" value="0.96"/></label>
           <label>auto new seed <input id="autoRefresh" type="checkbox"/></label>
           <label>auto interval (s) <input id="interval" type="range" min="5" max="120" step="1" value="30"/> <span class="mono small" id="intervalVal">30s</span></label>
           <button id="refreshNow">new seed</button>
+          <button id="flickBtn" title="Apply a quick 4D flick and camera spin">flick</button>
         </div>
       </div>
       <canvas id="scene"></canvas>

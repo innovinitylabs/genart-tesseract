@@ -92,9 +92,9 @@ export async function bootstrapApp(): Promise<void> {
   const composer = new EffectComposer(renderer)
   const renderPass = new RenderPass(scene, camera)
   composer.addPass(renderPass)
-  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.1, 0.6, 0.9)
-  const afterimage = new AfterimagePass(0.94)
-  afterimage.enabled = false
+  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 2.0, 0.6, 0.8)
+  const afterimage = new AfterimagePass(0.96)
+  afterimage.enabled = ((document.getElementById('trail') as HTMLInputElement)?.checked ?? true)
   composer.addPass(afterimage)
   composer.addPass(bloom)
 
@@ -127,7 +127,7 @@ export async function bootstrapApp(): Promise<void> {
   const client = createDrandClient()
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
-  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '2.5')
+  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '3.0')
   let trail = (document.getElementById('trail') as HTMLInputElement)?.checked ?? true
 
   async function refreshBeacon(): Promise<void> {
@@ -254,8 +254,8 @@ export async function bootstrapApp(): Promise<void> {
       positions[ptr++] = vb.y
       positions[ptr++] = vb.z
 
-      const colA = new THREE.Color().setHSL(((baseHue / 360) + va.t * 0.15) % 1, 0.7, 0.6)
-      const colB = new THREE.Color().setHSL(((baseHue / 360) + vb.t * 0.15) % 1, 0.7, 0.6)
+      const colA = new THREE.Color().setHSL(((baseHue / 360) + va.t * 0.35) % 1, 0.85, 0.55)
+      const colB = new THREE.Color().setHSL(((baseHue / 360) + vb.t * 0.35) % 1, 0.85, 0.55)
       colors[cptr++] = colA.r; colors[cptr++] = colA.g; colors[cptr++] = colA.b
       colors[cptr++] = colB.r; colors[cptr++] = colB.g; colors[cptr++] = colB.b
     }
@@ -322,6 +322,33 @@ export async function bootstrapApp(): Promise<void> {
   interval.addEventListener('input', () => { setAutoRefresh(); if (intervalVal) intervalVal.textContent = `${interval.value}s` })
   const refreshNow = document.getElementById('refreshNow') as HTMLButtonElement
   refreshNow.addEventListener('click', refreshBeacon)
+
+  // Flick button: add a quick burst to rotation and camera spin
+  const flickBtn = document.getElementById('flickBtn') as HTMLButtonElement
+  flickBtn.addEventListener('click', () => {
+    const rnd = () => (Math.random() - 0.5) * 2
+    // add a burst to base angles
+    angles = {
+      xy: angles.xy + rnd() * 0.8,
+      xz: angles.xz + rnd() * 0.8,
+      xw: angles.xw + rnd() * 0.8,
+      yz: angles.yz + rnd() * 0.8,
+      yw: angles.yw + rnd() * 0.8,
+      zw: angles.zw + rnd() * 0.8,
+    }
+    // quick camera spin
+    const start = performance.now()
+    const duration = 600
+    const base = camera.position.clone()
+    function spin(now: number) {
+      const t = Math.min(1, (now - start) / duration)
+      camera.position.x = base.x * Math.cos(t * Math.PI) - base.z * Math.sin(t * Math.PI)
+      camera.position.z = base.x * Math.sin(t * Math.PI) + base.z * Math.cos(t * Math.PI)
+      camera.lookAt(0, 0, 0)
+      if (t < 1) requestAnimationFrame(spin)
+    }
+    requestAnimationFrame(spin)
+  })
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {

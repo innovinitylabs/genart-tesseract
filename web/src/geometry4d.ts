@@ -183,8 +183,8 @@ export function project4Dto3D(v: Vec4, perspectiveDistance = 3): { x: number; y:
   const x = v.x * k
   const y = v.y * k
   const z = v.z * k
-  // Map w to [0,1] smoothly using tanh
-  const t = 0.5 + 0.5 * Math.tanh(v.w / perspectiveDistance)
+  // Map w to [0,1] smoothly using tanh; exaggerate for more colorful depth
+  const t = 0.5 + 0.5 * Math.tanh((v.w / perspectiveDistance) * 1.6)
   return { x, y, z, t }
 }
 
