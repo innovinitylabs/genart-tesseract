@@ -127,8 +127,8 @@ export async function bootstrapApp(): Promise<void> {
   const client = createDrandClient()
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
-  let speedMul = 1
-  let trail = false
+  let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '1.5')
+  let trail = (document.getElementById('trail') as HTMLInputElement)?.checked ?? true
 
   async function refreshBeacon(): Promise<void> {
     try {
@@ -313,8 +313,8 @@ export async function bootstrapApp(): Promise<void> {
   })
   const autoRefresh = document.getElementById('autoRefresh') as HTMLInputElement
   const interval = document.getElementById('interval') as HTMLInputElement
-  autoRefresh.addEventListener('change', setAutoRefresh)
-  interval.addEventListener('input', setAutoRefresh)
+  autoRefresh.addEventListener('change', () => { setAutoRefresh(); if (autoRefresh.checked) refreshBeacon() })
+  interval.addEventListener('input', () => { setAutoRefresh() })
   const refreshNow = document.getElementById('refreshNow') as HTMLButtonElement
   refreshNow.addEventListener('click', refreshBeacon)
 
