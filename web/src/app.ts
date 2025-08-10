@@ -4,6 +4,9 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { AfterimagePass } from 'three/examples/jsm/postprocessing/AfterimagePass.js'
+import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js'
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js'
+import { RGBShiftShader } from 'three/examples/jsm/shaders/RGBShiftShader.js'
 import { createDrandClient, getLatestVerifiedBeacon, getBeaconForRound, stopDrandClient } from './drand'
 import { createTesseract, createSimplex4D, createCrossPolytope4D, create24Cell, rotateVertices4D, project4Dto3D, type RotationAngles4D } from './geometry4d'
 
@@ -98,6 +101,11 @@ export async function bootstrapApp(): Promise<void> {
   afterimage.enabled = ((document.getElementById('trail') as HTMLInputElement)?.checked ?? true)
   composer.addPass(afterimage)
   composer.addPass(bloom)
+  const film = new FilmPass(0.2, false)
+  composer.addPass(film)
+  const rgbShift = new ShaderPass(RGBShiftShader)
+  rgbShift.uniforms['amount'].value = 0.001
+  composer.addPass(rgbShift)
 
   // Geometry buffers
   // Placeholder; will be replaced after randomness decides the shape
@@ -123,6 +131,16 @@ export async function bootstrapApp(): Promise<void> {
   const starMat = new THREE.PointsMaterial({ size: 0.012, transparent: true, opacity: 0.9, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false })
   const stars = new THREE.Points(starGeo, starMat)
   scene.add(stars)
+
+  // Vertex glow points
+  let glowPositions = new Float32Array(vertices.length * 3)
+  let glowColors = new Float32Array(vertices.length * 3)
+  const glowGeo = new THREE.BufferGeometry()
+  glowGeo.setAttribute('position', new THREE.BufferAttribute(glowPositions, 3))
+  glowGeo.setAttribute('color', new THREE.BufferAttribute(glowColors, 3))
+  const glowMat = new THREE.PointsMaterial({ size: 0.05, transparent: true, opacity: 0.85, vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false })
+  const glow = new THREE.Points(glowGeo, glowMat)
+  scene.add(glow)
 
   // Randomness and animation state
   const client = createDrandClient()
@@ -224,8 +242,10 @@ export async function bootstrapApp(): Promise<void> {
 
   // Animation
   const clock = new THREE.Clock()
+  let tAccum = 0
   function animate() {
     const dt = clock.getDelta() * speedMul
+    tAccum += dt
     controls.update()
 
     // Rotate a little over time to animate, plus base from the beacon
@@ -256,8 +276,10 @@ export async function bootstrapApp(): Promise<void> {
       positions[ptr++] = vb.y
       positions[ptr++] = vb.z
 
-      const { h: hA, s: sA, l: lA } = paletteHSL(baseHue, va.t, palette)
-      const { h: hB, s: sB, l: lB } = paletteHSL(baseHue, vb.t, palette)
+      const baseEdgeHueA = paletteBaseHue(baseHue, i + a, palette)
+      const baseEdgeHueB = paletteBaseHue(baseHue, i + b, palette)
+      const { h: hA, s: sA, l: lA } = paletteHSL(baseEdgeHueA, va.t, palette)
+      const { h: hB, s: sB, l: lB } = paletteHSL(baseEdgeHueB, vb.t, palette)
       const colA = new THREE.Color().setHSL(hA, sA, lA)
       const colB = new THREE.Color().setHSL(hB, sB, lB)
       colors[cptr++] = colA.r; colors[cptr++] = colA.g; colors[cptr++] = colA.b
@@ -265,6 +287,24 @@ export async function bootstrapApp(): Promise<void> {
     }
     lineGeometry.attributes.position.needsUpdate = true
     lineGeometry.attributes.color.needsUpdate = true
+
+    // Update vertex glow positions/colors
+    for (let vi = 0, p = 0, c = 0; vi < projected.length; vi++) {
+      const v = projected[vi]
+      glowPositions[p++] = v.x; glowPositions[p++] = v.y; glowPositions[p++] = v.z
+      const baseVHue = paletteBaseHue(baseHue, vi, palette)
+      const { h, s, l } = paletteHSL(baseVHue, v.t, palette)
+      const flicker = 0.05 * Math.sin(tAccum * 0.5 + vi)
+      const col = new THREE.Color().setHSL(h, Math.min(1, s + flicker), Math.min(1, l + flicker * 0.5))
+      glowColors[c++] = col.r; glowColors[c++] = col.g; glowColors[c++] = col.b
+    }
+    glowGeo.attributes.position.needsUpdate = true
+    glowGeo.attributes.color.needsUpdate = true
+
+    // Subtle pulse
+    const lfo = 0.2 + 0.2 * Math.sin(tAccum * 0.3)
+    bloom.strength = Math.max(0, (bloom as any).strength + lfo * 0.02)
+    rgbShift.uniforms['amount'].value = 0.0008 + 0.0006 * (1 + Math.sin(tAccum * 0.5))
 
     // AfterimagePass handles trails internally
     renderer.clear()
@@ -435,6 +475,14 @@ function paletteHSL(baseHue: number, t: number, palette: 'ocean' | 'pastel' | 'd
       return { h, s: 0.85, l: 0.55 }
     }
   }
+}
+
+function paletteBaseHue(baseHue: number, seed: number, palette: 'ocean' | 'pastel' | 'dusk' | 'sunrise' | 'aurora' | 'rainforest' | 'candy' | 'fire' | 'ice' | 'galaxy' | 'mono' | 'vivid'): number {
+  const base = baseHue
+  // introduce slight per-edge variance for more painterly look
+  const jitter = ((Math.sin(seed * 12.9898) * 43758.5453) % 1 + 1) % 1
+  const deg = (base + jitter * (palette === 'mono' ? 0 : 40)) % 360
+  return deg
 }
 
   // Cleanup on page unload
