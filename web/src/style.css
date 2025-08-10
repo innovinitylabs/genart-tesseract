@@ -63,6 +63,20 @@ body {
   padding: 4px 6px;
 }
 
+.swatches {
+  display: inline-flex;
+  gap: 4px;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+.swatches i {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+
 .row {
   display: flex;
   align-items: center;

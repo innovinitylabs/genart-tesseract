@@ -300,6 +300,7 @@ export async function bootstrapApp(): Promise<void> {
   })
   paletteSelect.addEventListener('change', () => {
     palette = paletteSelect.value as any
+    updatePalettePreview()
   })
   lineOpacity.addEventListener('input', () => {
     material.opacity = parseFloat(lineOpacity.value)
@@ -308,6 +309,7 @@ export async function bootstrapApp(): Promise<void> {
   const bloomVal = document.getElementById('bloomVal') as HTMLElement
   const speedVal = document.getElementById('speedVal') as HTMLElement
   const intervalVal = document.getElementById('intervalVal') as HTMLElement
+  const palettePreview = document.getElementById('palettePreview') as HTMLElement
   bloomStrength.addEventListener('input', () => {
     const v = parseFloat(bloomStrength.value)
     if (!Number.isNaN(v)) (bloom as any).strength = v
@@ -336,13 +338,13 @@ export async function bootstrapApp(): Promise<void> {
     const rnd = () => (Math.random() - 0.5) * 2
     // choose 1-3 random rotation planes to accentuate
     const planes: (keyof RotationAngles4D)[] = ['xy', 'xz', 'xw', 'yz', 'yw', 'zw']
-    const picks = planes.sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 3))
-    const burst = 0.8 + Math.random() * 0.8
+    const picks = planes.sort(() => Math.random() - 0.5).slice(0, 2 + Math.floor(Math.random() * 3))
+    const burst = 1.0 + Math.random() * 1.4
     for (const p of picks) angles[p] = angles[p] + rnd() * burst
 
     // camera flick in random yaw/pitch
     const start = performance.now()
-    const duration = 600
+    const duration = 900
     const yaw = (Math.random() - 0.5) * Math.PI
     const pitch = (Math.random() - 0.5) * (Math.PI / 4)
     const startPos = camera.position.clone()
@@ -361,8 +363,20 @@ export async function bootstrapApp(): Promise<void> {
     requestAnimationFrame(spin)
   })
 
+  function updatePalettePreview() {
+    if (!palettePreview) return
+    const samples = [0.0, 0.25, 0.5, 0.75, 1.0]
+    palettePreview.innerHTML = samples.map((t) => {
+      const { h, s, l } = paletteHSL(baseHue, t, palette)
+      const color = new THREE.Color().setHSL(h, s, l)
+      const hex = `#${color.getHexString()}`
+      return `<i style="background:${hex}"></i>`
+    }).join('')
+  }
+  updatePalettePreview()
+
 // Palette mapping
-function paletteHSL(baseHue: number, t: number, palette: 'ocean' | 'pastel' | 'dusk' | 'mono' | 'vivid'): { h: number; s: number; l: number } {
+function paletteHSL(baseHue: number, t: number, palette: 'ocean' | 'pastel' | 'dusk' | 'sunrise' | 'aurora' | 'rainforest' | 'candy' | 'fire' | 'ice' | 'galaxy' | 'mono' | 'vivid'): { h: number; s: number; l: number } {
   const base = (baseHue / 360)
   switch (palette) {
     case 'ocean': {
@@ -376,6 +390,34 @@ function paletteHSL(baseHue: number, t: number, palette: 'ocean' | 'pastel' | 'd
     case 'dusk': {
       const h = (base + 0.8 + t * 0.12) % 1
       return { h, s: 0.5, l: 0.4 + t * 0.1 }
+    }
+    case 'sunrise': {
+      const h = (base + 0.0 + t * 0.15) % 1
+      return { h, s: 0.6, l: 0.55 }
+    }
+    case 'aurora': {
+      const h = (base + 0.4 + t * 0.5) % 1
+      return { h, s: 0.6, l: 0.5 }
+    }
+    case 'rainforest': {
+      const h = (base + 0.33 + t * 0.1) % 1
+      return { h, s: 0.5, l: 0.45 }
+    }
+    case 'candy': {
+      const h = (base + t * 0.5) % 1
+      return { h, s: 0.9, l: 0.6 }
+    }
+    case 'fire': {
+      const h = (base + 0.02 + t * 0.08) % 1
+      return { h, s: 0.85, l: 0.5 }
+    }
+    case 'ice': {
+      const h = (base + 0.55 + t * 0.08) % 1
+      return { h, s: 0.35, l: 0.7 }
+    }
+    case 'galaxy': {
+      const h = (base + 0.7 + t * 0.4) % 1
+      return { h, s: 0.7, l: 0.45 }
     }
     case 'mono': {
       return { h: base, s: 0.05, l: 0.6 }

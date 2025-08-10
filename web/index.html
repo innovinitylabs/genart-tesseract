@@ -36,13 +36,21 @@
               <option value="ocean" selected>ocean (calm)</option>
               <option value="pastel">pastel</option>
               <option value="dusk">dusk</option>
+              <option value="sunrise">sunrise</option>
+              <option value="aurora">aurora</option>
+              <option value="rainforest">rainforest</option>
+              <option value="candy">candy</option>
+              <option value="fire">fire</option>
+              <option value="ice">ice</option>
+              <option value="galaxy">galaxy</option>
               <option value="mono">mono</option>
               <option value="vivid">vivid</option>
             </select>
+            <span id="palettePreview" class="swatches" aria-hidden="true"></span>
           </label>
           <label>lines <input id="lineOpacity" type="range" min="0" max="1" step="0.01" value="0.65"/></label>
           <label title="Glow intensity">bloom <input id="bloomStrength" type="range" min="0" max="20" step="0.01" value="4.0"/> <span class="mono small" id="bloomVal">4.00</span></label>
-          <label title="4D rotation rate (higher = faster)">rotation speed <input id="speed" type="range" min="0" max="20" step="0.01" value="3.0"/> <span class="mono small" id="speedVal">3.00</span></label>
+          <label title="4D rotation rate (higher = faster)">rotation speed <input id="speed" type="range" min="0" max="50" step="0.01" value="5.0"/> <span class="mono small" id="speedVal">5.00</span></label>
           <label>trail <input id="trail" type="checkbox" checked/></label>
           <label>trail intensity <input id="trailIntensity" type="range" min="0.80" max="0.995" step="0.001" value="0.96"/></label>
           <label>auto new seed <input id="autoRefresh" type="checkbox"/></label>
