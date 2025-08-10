@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js'
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js'
 import { createDrandClient, getLatestVerifiedBeacon, getBeaconForRound, stopDrandClient } from './drand'
-import { createTesseract, createSimplex4D, rotateVertices4D, project4Dto3D, type RotationAngles4D } from './geometry4d'
+import { createTesseract, createSimplex4D, createCrossPolytope4D, create24Cell, rotateVertices4D, project4Dto3D, type RotationAngles4D } from './geometry4d'
 
 type UiRefs = {
   status: HTMLElement
@@ -49,6 +49,8 @@ function chooseShape(hex: string): 'tesseract' | 'simplex' {
   return (b % 2 === 0) ? 'tesseract' : 'simplex'
 }
 
+type ShapeMode = 'auto' | 'tesseract' | 'simplex' | 'cross' | '24cell'
+
 export async function bootstrapApp(): Promise<void> {
   const ui: UiRefs = {
     status: $('status'),
@@ -57,6 +59,14 @@ export async function bootstrapApp(): Promise<void> {
     randhex: $('randhex'),
     shape: $('shape'),
   }
+
+  // Controls
+  const shapeSelect = document.getElementById('shapeSelect') as HTMLSelectElement
+  const lineOpacity = document.getElementById('lineOpacity') as HTMLInputElement
+  const bloomStrength = document.getElementById('bloomStrength') as HTMLInputElement
+  const speedCtrl = document.getElementById('speed') as HTMLInputElement
+  const trailCtrl = document.getElementById('trail') as HTMLInputElement
+  let shapeMode: ShapeMode = (shapeSelect?.value as ShapeMode) ?? 'auto'
 
   const canvas = document.getElementById('scene') as HTMLCanvasElement
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
@@ -113,6 +123,8 @@ export async function bootstrapApp(): Promise<void> {
   const client = createDrandClient()
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
+  let speedMul = 1
+  let trail = false
 
   async function refreshBeacon(): Promise<void> {
     try {
@@ -130,14 +142,21 @@ export async function bootstrapApp(): Promise<void> {
       baseHue = hueFromHex(beacon.randomness)
 
       // Choose shape
-      const shape = chooseShape(beacon.randomness)
-      ui.shape.textContent = `shape: ${shape}`
+      const autoShape = chooseShape(beacon.randomness)
+      const selected = shapeMode === 'auto' ? autoShape : (shapeMode === 'cross' ? 'cross' : (shapeMode === '24cell' ? '24cell' : shapeMode))
+      ui.shape.textContent = `shape: ${selected}`
       const size = 1
-      if (shape === 'tesseract') {
+      if (selected === 'tesseract') {
         const res = createTesseract(size)
         vertices = res.vertices; edges = res.edges
-      } else {
+      } else if (selected === 'simplex') {
         const res = createSimplex4D(size * 1.2)
+        vertices = res.vertices; edges = res.edges
+      } else if (selected === 'cross') {
+        const res = createCrossPolytope4D(size * 1.2)
+        vertices = res.vertices; edges = res.edges
+      } else {
+        const res = create24Cell(size * 0.9)
         vertices = res.vertices; edges = res.edges
       }
 
@@ -171,7 +190,7 @@ export async function bootstrapApp(): Promise<void> {
       starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3))
 
       // Tune bloom by seed
-      bloom.strength = 0.7 + (seed % 300) / 1000
+      bloom.strength = parseFloat(bloomStrength.value) || 0.9
       bloom.radius = 0.4 + ((seed >> 10) % 200) / 1000
       bloom.threshold = 0.7
       ui.status.textContent = 'Randomness ready'
@@ -190,7 +209,7 @@ export async function bootstrapApp(): Promise<void> {
   // Animation
   const clock = new THREE.Clock()
   function animate() {
-    const dt = clock.getDelta()
+    const dt = clock.getDelta() * speedMul
     controls.update()
 
     // Rotate a little over time to animate, plus base from the beacon
@@ -229,6 +248,7 @@ export async function bootstrapApp(): Promise<void> {
     lineGeometry.attributes.position.needsUpdate = true
     lineGeometry.attributes.color.needsUpdate = true
 
+    if (!trail) renderer.clear()
     composer.render()
     requestAnimationFrame(animate)
   }
@@ -253,6 +273,27 @@ export async function bootstrapApp(): Promise<void> {
       link.click()
     }
   })
+
+  // Control bindings
+  shapeSelect.addEventListener('change', () => {
+    shapeMode = shapeSelect.value as ShapeMode
+    refreshBeacon()
+  })
+  lineOpacity.addEventListener('input', () => {
+    material.opacity = parseFloat(lineOpacity.value)
+    material.needsUpdate = true
+  })
+  bloomStrength.addEventListener('input', () => {
+    // will be read during refresh; also set live here
+    const v = parseFloat(bloomStrength.value)
+    if (!Number.isNaN(v)) {
+      ;(composer.passes.find(p => (p as any).strength !== undefined) as any)?.strength && ((bloom as any).strength = v)
+    }
+  })
+  speedCtrl.addEventListener('input', () => {
+    const v = parseFloat(speedCtrl.value); if (!Number.isNaN(v)) speedMul = v
+  })
+  trailCtrl.addEventListener('change', () => { trail = trailCtrl.checked })
 
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {

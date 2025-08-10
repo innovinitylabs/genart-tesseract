@@ -55,6 +55,75 @@ export function createSimplex4D(size = 1): { vertices: Vec4[]; edges: Array<[num
   return { vertices, edges }
 }
 
+export function createCrossPolytope4D(size = 1): { vertices: Vec4[]; edges: Array<[number, number]> } {
+  // 16-cell (cross polytope): vertices at ± along each axis
+  const s = size
+  const vertices: Vec4[] = [
+    { x: s, y: 0, z: 0, w: 0 },
+    { x: -s, y: 0, z: 0, w: 0 },
+    { x: 0, y: s, z: 0, w: 0 },
+    { x: 0, y: -s, z: 0, w: 0 },
+    { x: 0, y: 0, z: s, w: 0 },
+    { x: 0, y: 0, z: -s, w: 0 },
+    { x: 0, y: 0, z: 0, w: s },
+    { x: 0, y: 0, z: 0, w: -s },
+  ]
+  const edges = edgesByMinDistance(vertices)
+  return { vertices, edges }
+}
+
+export function create24Cell(size = 1): { vertices: Vec4[]; edges: Array<[number, number]> } {
+  // 24-cell: all permutations of (±1, ±1, 0, 0)
+  const base: number[][] = []
+  const coords = [0, 1, 2, 3]
+  for (let i = 0; i < coords.length; i++) {
+    for (let j = i + 1; j < coords.length; j++) {
+      // positions i and j take ±1
+      const idx = [i, j]
+      for (const sx of [-1, 1]) {
+        for (const sy of [-1, 1]) {
+          const v = [0, 0, 0, 0]
+          v[idx[0]] = sx
+          v[idx[1]] = sy
+          base.push(v)
+        }
+      }
+    }
+  }
+  // Normalize scale so average edge length roughly matches size
+  const vertices: Vec4[] = base.map(([x, y, z, w]) => ({ x: x * size, y: y * size, z: z * size, w: w * size }))
+  const edges = edgesByMinDistance(vertices)
+  return { vertices, edges }
+}
+
+export function edgesByMinDistance(vertices: Vec4[], epsilon = 1e-6): Array<[number, number]> {
+  let min = Infinity
+  const n = vertices.length
+  // find smallest non-zero squared distance
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = vertices[i].x - vertices[j].x
+      const dy = vertices[i].y - vertices[j].y
+      const dz = vertices[i].z - vertices[j].z
+      const dw = vertices[i].w - vertices[j].w
+      const d2 = dx * dx + dy * dy + dz * dz + dw * dw
+      if (d2 > epsilon && d2 < min) min = d2
+    }
+  }
+  const edges: Array<[number, number]> = []
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const dx = vertices[i].x - vertices[j].x
+      const dy = vertices[i].y - vertices[j].y
+      const dz = vertices[i].z - vertices[j].z
+      const dw = vertices[i].w - vertices[j].w
+      const d2 = dx * dx + dy * dy + dz * dz + dw * dw
+      if (Math.abs(d2 - min) < 1e-6) edges.push([i, j])
+    }
+  }
+  return edges
+}
+
 export function apply4dRotation(v: Vec4, a: RotationAngles4D): Vec4 {
   let { x, y, z, w } = v
   // XY rotation

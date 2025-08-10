@@ -19,6 +19,22 @@
           <span id="shape">shape: —</span>
         </div>
         <div class="row mono small" id="randhex">randomness: —</div>
+        <div class="row mono small" style="gap: 12px; align-items: center;">
+          <label>
+            shape
+            <select id="shapeSelect">
+              <option value="auto">auto (seeded)</option>
+              <option value="tesseract">tesseract</option>
+              <option value="simplex">simplex (5-cell)</option>
+              <option value="cross">cross (16-cell)</option>
+              <option value="24cell">24-cell</option>
+            </select>
+          </label>
+          <label>lines <input id="lineOpacity" type="range" min="0" max="1" step="0.01" value="0.65"/></label>
+          <label>bloom <input id="bloomStrength" type="range" min="0" max="2" step="0.01" value="0.9"/></label>
+          <label>speed <input id="speed" type="range" min="0" max="2" step="0.01" value="1"/></label>
+          <label>trail <input id="trail" type="checkbox"/></label>
+        </div>
       </div>
       <canvas id="scene"></canvas>
     </div>
