@@ -69,7 +69,7 @@ export async function bootstrapApp(): Promise<void> {
   let shapeMode: ShapeMode = (shapeSelect?.value as ShapeMode) ?? 'auto'
 
   const canvas = document.getElementById('scene') as HTMLCanvasElement
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(window.innerWidth, window.innerHeight)
   renderer.setClearColor('#0b0e14', 1)
