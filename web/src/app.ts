@@ -146,7 +146,7 @@ export async function bootstrapApp(): Promise<void> {
   const client = createDrandClient()
   let angles: RotationAngles4D = { xy: 0, xz: 0, xw: 0, yz: 0, yw: 0, zw: 0 }
   let baseHue = 210
-  let palette: 'ocean' | 'pastel' | 'dusk' | 'mono' | 'vivid' = (paletteSelect?.value as any) ?? 'ocean'
+  let palette: 'ocean' | 'pastel' | 'dusk' | 'sunrise' | 'aurora' | 'rainforest' | 'candy' | 'fire' | 'ice' | 'galaxy' | 'mono' | 'vivid' = (paletteSelect?.value as any) ?? 'ocean'
   let speedMul = parseFloat((document.getElementById('speed') as HTMLInputElement)?.value ?? '10.0')
   let trail = (document.getElementById('trail') as HTMLInputElement)?.checked ?? true
 
@@ -300,6 +300,9 @@ export async function bootstrapApp(): Promise<void> {
     }
     glowGeo.attributes.position.needsUpdate = true
     glowGeo.attributes.color.needsUpdate = true
+
+    // Style post-color tweaks
+    applyStyle('nebula', colors, positions)
 
     // Subtle pulse
     const lfo = 0.2 + 0.2 * Math.sin(tAccum * 0.3)
@@ -485,6 +488,39 @@ function paletteBaseHue(baseHue: number, seed: number, palette: 'ocean' | 'paste
   return deg
 }
 
+function applyStyle(style: 'nebula' | 'glass' | 'ink' | 'lines', colors: Float32Array, _positions: Float32Array) {
+  switch (style) {
+    case 'nebula': {
+      // soften lines toward luminance for a smoky feel
+      for (let i = 0; i < colors.length; i += 3) {
+        const r = colors[i], g = colors[i + 1], b = colors[i + 2]
+        const l = (r + g + b) / 3
+        colors[i] = r * 0.9 + l * 0.1
+        colors[i + 1] = g * 0.9 + l * 0.1
+        colors[i + 2] = b * 0.9 + l * 0.1
+      }
+      break
+    }
+    case 'glass': {
+      for (let i = 0; i < colors.length; i += 3) {
+        colors[i] = Math.min(1, colors[i] * 1.25)
+        colors[i + 1] = Math.min(1, colors[i + 1] * 1.25)
+        colors[i + 2] = Math.min(1, colors[i + 2] * 1.25)
+      }
+      break
+    }
+    case 'ink': {
+      for (let i = 0; i < colors.length; i += 3) {
+        const l = (colors[i] + colors[i + 1] + colors[i + 2]) / 3
+        colors[i] = colors[i + 1] = colors[i + 2] = l
+      }
+      break
+    }
+    case 'lines':
+    default:
+      break
+  }
+}
   // Cleanup on page unload
   window.addEventListener('beforeunload', () => {
     stopDrandClient(client)

@@ -48,6 +48,15 @@
             </select>
             <span id="palettePreview" class="swatches" aria-hidden="true"></span>
           </label>
+          <label>
+            style
+            <select id="styleSelect">
+              <option value="nebula" selected>nebula</option>
+              <option value="glass">glass</option>
+              <option value="ink">ink</option>
+              <option value="lines">lines</option>
+            </select>
+          </label>
           <label>lines <input id="lineOpacity" type="range" min="0" max="1" step="0.01" value="0.65"/></label>
           <label title="Glow intensity">bloom <input id="bloomStrength" type="range" min="0" max="20" step="0.01" value="4.0"/> <span class="mono small" id="bloomVal">4.00</span></label>
           <label title="4D rotation rate (higher = faster)">rotation speed <input id="speed" type="range" min="0" max="200" step="0.01" value="10.0"/> <span class="mono small" id="speedVal">10.00</span></label>
